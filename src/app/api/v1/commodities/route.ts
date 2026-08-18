@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { checkRateLimit, handleError, ok } from "@/lib/api";
 import { ensureCommoditiesFresh, getLatestCommodityPrices } from "@/lib/commodities/service";
+import { getCommoditySourceStatus } from "@/lib/commodities/connectors";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
       commodities: filtered,
       count: filtered.length,
       freshness,
+      sourceStatus: getCommoditySourceStatus(),
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
