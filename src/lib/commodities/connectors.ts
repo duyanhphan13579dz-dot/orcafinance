@@ -35,6 +35,17 @@ const SIMPLIZE = "simplize-commodities";
 const VIETNAMBIZ = "vietnambiz-goods";
 const FX_PROVIDER = "open-er-api";
 
+interface SourceHealth { status: "up" | "down" | "checking" | "unknown"; lastAttemptAt: string | null; lastSuccessAt: string | null; latencyMs: number | null; records: number; error: string | null }
+const globalHealth = globalThis as typeof globalThis & { __orcaCommoditySourceHealth?: Record<string, SourceHealth> };
+if (!globalHealth.__orcaCommoditySourceHealth) {
+  globalHealth.__orcaCommoditySourceHealth = {
+    simplize: { status: "unknown", lastAttemptAt: null, lastSuccessAt: null, latencyMs: null, records: 0, error: null },
+    vietnambiz: { status: "unknown", lastAttemptAt: null, lastSuccessAt: null, latencyMs: null, records: 0, error: null },
+  };
+}
+const sourceHealth = globalHealth.__orcaCommoditySourceHealth;
+export function getCommoditySourceStatus() { return structuredClone(sourceHealth); }
+
 interface CommodityMap {
   symbol: string;
   aliases: string[];
@@ -227,12 +238,24 @@ async function fetchHtmlProvider(
   });
 }
 
+async function trackedSource(key: "simplize" | "vietnambiz", task: () => Promise<CommodityPriceData[]>) {
+  const started = Date.now(); sourceHealth[key] = { ...sourceHealth[key], status: "checking", lastAttemptAt: new Date().toISOString() };
+  try {
+    const rows = await task();
+    sourceHealth[key] = { status: "up", lastAttemptAt: sourceHealth[key].lastAttemptAt, lastSuccessAt: new Date().toISOString(), latencyMs: Date.now() - started, records: rows.length, error: null };
+    return rows;
+  } catch (err) {
+    sourceHealth[key] = { ...sourceHealth[key], status: "down", latencyMs: Date.now() - started, error: err instanceof Error ? err.message : String(err) };
+    throw err;
+  }
+}
+
 export async function fetchSimplizeCommodities(): Promise<CommodityPriceData[]> {
-  return fetchHtmlProvider(SIMPLIZE, "https://simplize.vn/hang-hoa", parseSimplizeHtml);
+  return trackedSource("simplize", () => fetchHtmlProvider(SIMPLIZE, "https://simplize.vn/hang-hoa", parseSimplizeHtml));
 }
 
 export async function fetchVietnamBizCommodities(): Promise<CommodityPriceData[]> {
-  return fetchHtmlProvider(VIETNAMBIZ, "https://data.vietnambiz.vn/goods", parseVietnamBizHtml);
+  return trackedSource("vietnambiz", () => fetchHtmlProvider(VIETNAMBIZ, "https://data.vietnambiz.vn/goods", parseVietnamBizHtml));
 }
 
 interface OpenErPayload {
@@ -278,6 +301,7 @@ export async function fetchAllCommoditiesData(): Promise<{
   exchangeRates: ExchangeRateData[];
   errors: string[];
   stale?: boolean;
+  sourceStatus: Record<string, SourceHealth>;
 }> {
   const errors: string[] = [];
 
@@ -316,5 +340,5 @@ export async function fetchAllCommoditiesData(): Promise<{
     stale: priceResult.stale,
     errors,
   });
-  return { prices: priceResult.value, exchangeRates, errors, stale: priceResult.stale };
+  return { prices: priceResult.value, exchangeRates, errors, stale: priceResult.stale, sourceStatus: getCommoditySourceStatus() };
 }
