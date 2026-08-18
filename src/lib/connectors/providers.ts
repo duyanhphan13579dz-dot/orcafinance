@@ -107,11 +107,12 @@ interface DchartSearchRow {
   type: string;
 }
 
-export async function vndirectSearch(query: string): Promise<SymbolInfo[]> {
+export async function vndirectSearch(query: string, limit = 20): Promise<SymbolInfo[]> {
   return getBreaker(VNDIRECT).exec(async () => {
+    const safeLimit = Math.max(1, Math.min(50, limit));
     const url = `https://dchart-api.vndirect.com.vn/dchart/search?query=${encodeURIComponent(
       query,
-    )}&limit=20&type=&exchange=`;
+    )}&limit=${safeLimit}&type=&exchange=`;
     const res = await fetchWithRetry(url, { provider: VNDIRECT });
     const rows = await readJsonSafe<DchartSearchRow[]>(res, VNDIRECT, url);
     if (!Array.isArray(rows)) throw new ProviderError(VNDIRECT, "unexpected search payload");
