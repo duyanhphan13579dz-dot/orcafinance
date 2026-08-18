@@ -1,13 +1,13 @@
 /**
- * Commodity updater. Polls Simplize + VietnamBiz every 15 minutes.
- * Provider calls are cached for 5 minutes and protected by retry/circuit breakers.
+ * Commodity updater. Polls Simplize + VietnamBiz continuously (default 5 minutes).
+ * Both providers are scanned; individual source values are never averaged.
  */
 
 import { forProvider } from "@/lib/logger";
 import { refreshCommoditiesFromRealSources } from "./service";
 
 const log = forProvider("commodities-scheduler");
-const INTERVAL_MS = Number(process.env.COMMODITIES_REFRESH_INTERVAL_MS ?? 15 * 60_000);
+const INTERVAL_MS = Math.max(60_000, Number(process.env.COMMODITIES_REFRESH_INTERVAL_MS ?? 5 * 60_000));
 
 const globalForScheduler = globalThis as typeof globalThis & { __orcaCommoditiesScheduler?: boolean };
 
