@@ -82,7 +82,7 @@ async function syncListedUniverse() {
   if (globalUniverse.__orcaHeatmapUniverseSyncAt && Date.now() - globalUniverse.__orcaHeatmapUniverseSyncAt < 24 * 60 * 60_000) return;
   globalUniverse.__orcaHeatmapUniverseSyncing = true;
   try {
-    const responses = await Promise.allSettled("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((prefix) => vndirectSearch(prefix, 50)));
+    const responses = await Promise.allSettled("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((prefix) => vndirectSearch(prefix)));
     const seen = new Map<string, { symbol: string; name: string; exchange: string; type: string; source: string; sector: string; industry: string }>();
     for (const response of responses) if (response.status === "fulfilled") {
       for (const row of response.value) {
