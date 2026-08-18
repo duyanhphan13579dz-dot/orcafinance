@@ -539,12 +539,14 @@ export async function refreshCommoditiesFromRealSources() {
     ratesSaved,
     errors: fetched.errors,
     stale: !!fetched.stale,
+    sourceStatus: fetched.sourceStatus,
+    activeSources: [...new Set(fetched.prices.map((price) => price.source))],
     durationMs: Date.now() - startedAt,
   };
 }
 
 /** Refresh on demand when no successful ingestion occurred in the last N minutes. */
-export async function ensureCommoditiesFresh(maxAgeMs = 15 * 60_000) {
+export async function ensureCommoditiesFresh(maxAgeMs = 5 * 60_000) {
   const result = await db.execute(sql`SELECT MAX(created_at) AS latest FROM commodity_prices`);
   const latestRaw = (result.rows[0] as { latest?: string | Date | null } | undefined)?.latest;
   const latest = latestRaw ? new Date(latestRaw).getTime() : 0;
