@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { api, fmtNum, fmtPct, changeColor } from "@/lib/client";
+import { fmtNum, fmtPct, changeColor, usePoll } from "@/lib/client";
 import { ProtectedPage } from "@/components/ProtectedPage";
 
 interface CommodityPrice {
@@ -34,23 +34,12 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 export default function CommoditiesPage() {
-  const [commodities, setCommodities] = useState<CommodityPrice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const feed = usePoll<{ commodities: CommodityPrice[]; freshness?: Record<string, unknown> }>("/commodities", 30_000);
+  const commodities = feed.data?.commodities ?? [];
+  const loading = feed.loading;
+  const error = feed.error;
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    api<{ commodities: CommodityPrice[] }>("/commodities")
-      .then((res) => {
-        setCommodities(res.data.commodities);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, []);
 
   const filtered = commodities.filter((c) => {
     const matchesGroup = selectedGroup === "all" || c.group === selectedGroup;
@@ -70,7 +59,7 @@ export default function CommoditiesPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-white">Hàng hóa Thế giới</h1>
         <p className="text-xs md:text-sm text-slate-400 mt-1">
-          Dữ liệu thật từ Simplize và VietnamBiz · tự động làm mới mỗi 15 phút
+          Quét liên tục Simplize và VietnamBiz mỗi 5 phút · giao diện nhận snapshot mới mỗi 30 giây
         </p>
         </div>
 
